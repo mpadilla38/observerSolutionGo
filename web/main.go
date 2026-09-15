@@ -99,22 +99,59 @@ func productDetailHandler(w http.ResponseWriter, r *http.Request) {
 } */
 
 // mux básico
-
 func main() {
 	mux := http.NewServeMux()
 
 	//Listen routs
-	mux.HandleFunc("GET /", homeHandler)
+	mux.HandleFunc("GET /{$}", homeHandler)
 	mux.HandleFunc("GET /usuarios", usuariosHandler)
 	mux.HandleFunc("GET /updateUsuario/{id}", updateUsuarioHandler)
 	mux.HandleFunc("POST /insertUsuario", insertUsuarioHandler)
 
+	//logging
 	log.SetPrefix("[ventasFlow] ")
 	log.Println("servidor iniciado")
 	log.Printf("puerto: %d", 8080)
 
-	http.ListenAndServe(":8080", mux)
+	//Start server
+	//handler := withNotFoundHandler(mux)
+	//log.Println("Servidor corriendo en :8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
+
+// Estructura de error en Root
+/* type ErrorRoot struct {
+	Status  int    `json:"status"`
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Path    string `json:"path"`
+}
+
+// Wrapper que envuelve el mux para interceptar rutas no encontradas
+func withNotFoundHandler(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, pattern := mux.Handler(r)
+
+		if pattern == "" {
+			// No hubo match con ningún patrón registrado
+			log.Printf("[404] Ruta no encontrada: %s %s", r.Method, r.URL.Path)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ErrorRoot{
+				Status:  http.StatusNotFound,
+				Error:   "not_found",
+				Message: "El recurso solicitado no existe",
+				Path:    r.URL.Path,
+			})
+			return
+		}
+
+		// Si hubo match, seguimos el flujo normal
+		mux.ServeHTTP(w, r)
+	})
+}
+*/
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Pagina de inicio %s", r.URL.Path)
@@ -130,15 +167,69 @@ func updateUsuarioHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // recibiendo solicitud POST
-type CrearUsuario struct {
-	Nombre string `json: "nombre"`
-	Email  string `json: "email"`
+type CrearUsuarioRequest struct {
+	Nombre string `json:"nombre"`
+	Email  string `json:"email"`
 	Edad   int    `json:"edad"`
 }
 
+type CrearUsuarioResponse struct {
+	Status int    `json:"status"`
+	ID     int    `json:"id"`
+	Nombre string `json:"nombre"`
+}
+
+type ErrorResponse struct {
+	Status  int    `json:"status"`
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	//Path    string `json:"path"`
+}
+
 func insertUsuarioHandler(w http.ResponseWriter, r *http.Request) {
-	var req CrearUsuario
-	json.NewDecoder(r.Body).Decode(&req)
+	var req CrearUsuarioRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Status:  http.StatusBadRequest,
+			Message: "Error al decodificar la solicitud",
+		})
+		return
+	}
+
 	defer r.Body.Close()
-	log.Printf("Nombre recibido: %s", req.Nombre)
+
+	if req.Nombre == "" {
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{
+			Status:  http.StatusBadRequest,
+			Message: "El nombre es obligatorio",
+		})
+		return
+	}
+
+	//Simulamos la creación de un usuario y generamos un ID ficticio
+	/* resp := CrearUsuarioResponse{
+		Status: http.StatusCreated,
+		ID:     1,
+		Nombre: req.Nombre,
+	} */
+
+	//fmt.Fprintln(w, "usuario creado")
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(CrearUsuarioResponse{
+		Status: http.StatusCreated,
+		ID:     1,
+		Nombre: req.Nombre,
+	})
+
+	log.Printf("InsertUser Status: %d", http.StatusCreated)
 }
