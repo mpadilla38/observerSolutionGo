@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath" //servir archivos estaticos
 )
 
 func main() {
@@ -15,17 +16,22 @@ func main() {
 	mux.HandleFunc("GET /updateUsuario/{id}", updateUsuarioHandler)
 	mux.HandleFunc("POST /insertUsuario", insertUsuarioHandler)
 
+	//maneho de archivos estaticos
+	fs := http.FileServer(http.Dir("web/static"))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
 	//logging
 	log.SetPrefix("[ventasFlow] ")
 	log.Println("servidor iniciado")
 	log.Printf("puerto: %d", 8080)
 
 	//Start server
-	log.Println("Servidor corriendo en :8080")
+	//log.Println("Servidor corriendo en :8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, filepath.Join("web/templates/", "home.html"))
 	log.Printf("Pagina de inicio %s", r.URL.Path)
 }
 
@@ -82,6 +88,7 @@ func insertUsuarioHandler(w http.ResponseWriter, r *http.Request) {
 			Status:  http.StatusBadRequest,
 			Message: "El nombre es obligatorio",
 		})
+
 		return
 	}
 
